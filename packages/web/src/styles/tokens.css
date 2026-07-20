@@ -95,6 +95,15 @@
 /*
  * Dark theme.
  *
+ * Defined exactly once, and selected by an explicit `data-theme="dark"` on the
+ * root element rather than by a `prefers-color-scheme` media query.
+ *
+ * The media query version needs the same thirty values written twice - once for
+ * the query, once for the manual override - and two copies of anything drift
+ * apart the first time only one of them is edited. Instead a tiny script in
+ * index.html resolves the system preference into the attribute before the first
+ * paint, so there is one source of truth here and no flash of the wrong theme.
+ *
  * Not an inversion. Text is never pure white and surfaces never pure black -
  * maximum contrast on a dark background causes halation, where glyphs appear
  * to smear. The warm hue is kept so the two themes read as one product.
@@ -134,44 +143,4 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.55);
-}
-
-/* Follow the system until the user picks a side, which sets data-theme. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --surface-sunken: #14120f;
-    --surface-base: #1c1917;
-    --surface-raised: #24201d;
-    --surface-overlay: #2b2622;
-
-    --text-strong: #f5f0e8;
-    --text-default: #ddd5ca;
-    --text-muted: #a39a8f;
-    --text-subtle: #7d746a;
-    --text-inverse: #1c1917;
-
-    --border-subtle: #322c27;
-    --border-default: #423a33;
-    --border-strong: #574d44;
-
-    --accent: #e07a4e;
-    --accent-hover: #eb8c62;
-    --accent-soft: #2e2019;
-    --accent-border: #4a3226;
-    --accent-text: #f0a077;
-
-    --success: #7aa882;
-    --success-soft: #1e2a20;
-    --danger: #e08276;
-    --danger-hover: #eb9589;
-    --danger-soft: #2e1d1a;
-    --warning: #d1a558;
-    --warning-soft: #2b2314;
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.55);
-  }
 }

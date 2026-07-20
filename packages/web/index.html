@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Tessera - version control, built from first principles." />
     <title>Tessera</title>
+
+    <!--
+      Resolve the theme before the first paint.
+
+      This runs synchronously in <head>, ahead of any rendering, so the correct
+      palette is in place on the very first frame. Doing it in React instead
+      means the page paints once with the default theme and then again with the
+      real one - the white flash every dark-mode user notices immediately.
+
+      It also means the stylesheet needs only one set of dark values, selected
+      by this attribute, rather than a second copy inside a media query.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("tessera-theme");
+          var dark = stored === "dark" ||
+            (stored !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+        } catch (error) {
+          // Private browsing can make localStorage throw. Light is a safe floor.
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -53,12 +53,11 @@ services:
       - key: REFRESH_TOKEN_SECRET
         generateValue: true
 
-      # Set this to the web service's real URL after the first deploy. The
-      # server refuses a wildcard origin in production on purpose.
-      # Must match the web service's real origin. Render appends a random
-      # suffix when a name is taken, so this cannot be predicted before the
-      # first deploy - which is why it is filled in by hand rather than
-      # defaulted to something permissive.
+      # Must match the web service's real origin, and is set by hand after the
+      # first deploy: Render appends a random suffix when a name is taken, so
+      # the hostname cannot be known in advance. Left unset rather than
+      # defaulted to something permissive - the server rejects a wildcard
+      # origin in production on purpose.
       - key: CORS_ORIGINS
         sync: false
 

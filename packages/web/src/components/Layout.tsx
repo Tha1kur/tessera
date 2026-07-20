@@ -108,27 +108,25 @@ type Theme = "light" | "dark";
 /**
  * Light/dark toggle.
  *
- * The choice is stored, but nothing is written until the user actually picks
- * one - until then the app follows the system preference, which is what the
- * CSS does by default.
+ * The initial value is read from the attribute the inline script in index.html
+ * already set, rather than recomputed here - so this component and the pre-paint
+ * script can never disagree about which theme is showing.
  */
 function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme | null>(() => {
-    const stored = localStorage.getItem("tessera-theme");
-    return stored === "light" || stored === "dark" ? stored : null;
-  });
+  const [theme, setTheme] = useState<Theme>(
+    () => (document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"),
+  );
 
   useEffect(() => {
-    if (theme) {
-      document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
       localStorage.setItem("tessera-theme", theme);
-    } else {
-      document.documentElement.removeAttribute("data-theme");
+    } catch {
+      // Private browsing; the theme still applies for this session.
     }
   }, [theme]);
 
-  const resolved: Theme =
-    theme ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const resolved = theme;
 
   return (
     <button
