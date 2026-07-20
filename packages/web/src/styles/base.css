@@ -68,6 +68,19 @@ code, pre { font-family: var(--font-mono); font-size: 0.9em; }
   }
 }
 
+/*
+ * Make the `hidden` attribute actually hide things.
+ *
+ * The user agent stylesheet applies `display: none` to [hidden], but any author
+ * rule setting `display` wins - so an element with both `hidden` and a class
+ * like `.stack { display: flex }` stays visible. Restating it here, with the
+ * importance needed to beat a plain class, makes the attribute mean what every
+ * developer assumes it means.
+ */
+[hidden] {
+  display: none !important;
+}
+
 /* Visible only to screen readers. */
 .sr-only {
   position: absolute;

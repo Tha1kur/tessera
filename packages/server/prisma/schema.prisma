@@ -48,9 +48,9 @@ model User {
 /// is presented again, that means a copy leaked, and the entire family is
 /// revoked. Detecting theft is the whole point of rotating in the first place.
 model Session {
-  id        String  @id @default(cuid())
+  id        String @id @default(cuid())
   userId    String
-  tokenHash String  @unique
+  tokenHash String @unique
   familyId  String
 
   userAgent String?
@@ -91,9 +91,14 @@ model Repository {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner  User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  issues Issue[]
-  stars  Star[]
+  /// The branch shown when someone opens the repository.
+  defaultBranch String @default("main")
+
+  owner   User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  issues  Issue[]
+  stars   Star[]
+  objects GitObject[]
+  refs    GitRef[]
 
   /// Repository names are unique *per owner*, not globally. Making the name
   /// globally unique - as the original project did - means the first person to
@@ -157,4 +162,41 @@ model Follow {
   @@id([followerId, followingId])
   @@index([followingId])
   @@map("follows")
+}
+
+/// A version control object - blob, tree or commit - exactly as the engine
+/// stores it: framed and zlib-compressed.
+///
+/// These live in the database rather than on disk because the API runs on
+/// ephemeral containers: a filesystem there is wiped on every deploy, which
+/// would silently destroy every repository's history. The engine does not know
+/// or care - it talks to an ObjectBackend, and this is one implementation of it.
+model GitObject {
+  repositoryId String
+  /// The SHA-256 the engine derived. Content-addressed, so the same bytes
+  /// pushed twice occupy one row.
+  id           String
+  bytes        Bytes
+  createdAt    DateTime @default(now())
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  /// Scoped per repository: the same id in two repositories is the same
+  /// content, but keeping them separate means deleting one repository cannot
+  /// pull objects out from under another.
+  @@id([repositoryId, id])
+  @@map("git_objects")
+}
+
+/// A branch: one name pointing at one commit.
+model GitRef {
+  repositoryId String
+  name         String
+  commitId     String
+  updatedAt    DateTime @updatedAt
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@id([repositoryId, name])
+  @@map("git_refs")
 }

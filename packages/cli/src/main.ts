@@ -21,6 +21,7 @@ import { RefStore, abortMerge } from "@tessera/core";
 import type { FileDiff } from "@tessera/core";
 
 import { formatDate, paintPatch, pad, relativeTime, shortId, style } from "./format.js";
+import { push } from "./push.js";
 
 /* -------------------------------------------------------------------------- */
 /* Argument parsing                                                           */
@@ -40,7 +41,24 @@ interface Args {
 function parseArgs(argv: readonly string[]): Args {
   const positional: string[] = [];
   const flags = new Map<string, string | true>();
-  const valued = new Set(["message", "m", "number", "n", "source", "delete", "d", "context"]);
+  /**
+   * Flags that consume the next argument.
+   *
+   * This has to be explicit: `--force file.txt` means a boolean flag and a
+   * path, while `--message fix` means a flag and its value, and nothing in the
+   * text distinguishes them. Any new flag taking a value must be listed here -
+   * omitting one silently turns its value into a positional argument.
+   */
+  const valued = new Set([
+    "message", "m",
+    "number", "n",
+    "source",
+    "delete", "d",
+    "context",
+    "token",
+    "server",
+    "branch",
+  ]);
 
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i] as string;
@@ -123,6 +141,12 @@ ${style.bold("BRANCHING")}
   restore <path...>           Discard changes to specific files
   merge <branch>              Merge another branch into this one
   merge --abort               Abandon a conflicted merge
+
+${style.bold("SHARING")}
+  push <owner/repo>           Upload this repository to a Tessera server
+                              --server <url>   default https://tessera-web-8rl9.onrender.com
+                              --token <token>  access token from the site
+                              --branch <name>  default: the branch you are on
 
 ${style.bold("CONFIGURATION")}
   config user.name <value>    Set the name recorded on your commits
@@ -446,6 +470,54 @@ async function commandMerge(args: Args): Promise<void> {
   }
 }
 
+async function commandPush(args: Args): Promise<void> {
+  const target = args.positional[0];
+  if (!target || !target.includes("/")) {
+    throw new UsageError("which repository? try `tess push yourname/yourrepo`");
+  }
+
+  const [owner, repositoryName] = target.split("/");
+  if (!owner || !repositoryName) throw new UsageError("expected owner/repository");
+
+  const token = flagString(args, "token") ?? process.env.TESSERA_TOKEN;
+  if (!token) {
+    throw new UsageError(
+      "an access token is required - pass --token, or set TESSERA_TOKEN\n" +
+        "(sign in on the site, then read it from the login response)",
+    );
+  }
+
+  const repository = await open();
+  const refs = new RefStore(repository);
+  const head = await refs.readHead();
+
+  const branch =
+    flagString(args, "branch") ?? (head.kind === "attached" ? head.branch : undefined);
+  if (!branch) {
+    throw new UsageError("HEAD is detached - name a branch with --branch");
+  }
+
+  const result = await push(repository, {
+    server: flagString(args, "server") ?? "https://tessera-web-8rl9.onrender.com",
+    owner,
+    repository: repositoryName,
+    branch,
+    token,
+    onProgress: (message) => console.log(style.dim(`  ${message}`)),
+  });
+
+  console.log(
+    `${style.green("Pushed")} ${style.bold(branch)} to ${style.bold(target)} at ${style.yellow(
+      shortId(result.commit),
+    )}`,
+  );
+  console.log(
+    style.dim(
+      `${result.uploaded} object(s) uploaded, ${result.skipped} already present out of ${result.considered} reachable`,
+    ),
+  );
+}
+
 async function commandVerify(): Promise<void> {
   const repository = await open();
   const result = await repository.objects.verify();
@@ -502,6 +574,7 @@ const COMMANDS: Record<string, (args: Args) => Promise<void>> = {
   checkout: commandCheckout,
   restore: commandRestore,
   merge: commandMerge,
+  push: commandPush,
   verify: async () => commandVerify(),
   config: commandConfig,
 };

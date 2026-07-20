@@ -1,0 +1,144 @@
+/* Unified diff rendering. */
+
+.diff {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+
+.diff__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.diff__path { font-size: var(--text-sm); color: var(--text-strong); word-break: break-all; }
+
+.diff__kind {
+  font-size: var(--text-xs);
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-full);
+  text-transform: capitalize;
+}
+.diff__kind--added    { background: var(--success-soft); color: var(--success); }
+.diff__kind--deleted  { background: var(--danger-soft);  color: var(--danger); }
+.diff__kind--modified { background: var(--warning-soft); color: var(--warning); }
+
+.diff__plus  { color: var(--success); }
+.diff__minus { color: var(--danger); }
+
+.diff__binary { padding: var(--space-4); margin: 0; }
+
+/* The scroll container, so a long code line never widens the page. */
+.diff__scroll { overflow-x: auto; }
+
+.diff__table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.diff__num {
+  width: 1%;
+  min-width: 2.75rem;
+  padding: 0 var(--space-2);
+  text-align: right;
+  color: var(--text-subtle);
+  /* Numbers are decoration for the code, not content to be copied with it. */
+  user-select: none;
+  vertical-align: top;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.diff__marker {
+  width: 1%;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  user-select: none;
+  vertical-align: top;
+  color: var(--text-subtle);
+}
+
+.diff__code {
+  padding: 0 var(--space-3) 0 0;
+  white-space: pre;
+  vertical-align: top;
+}
+
+.diff__row--add    { background: var(--success-soft); }
+.diff__row--add .diff__marker { color: var(--success); }
+.diff__row--remove { background: var(--danger-soft); }
+.diff__row--remove .diff__marker { color: var(--danger); }
+
+.diff__row--hunk td {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  padding: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Tabs on the repository page. */
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+}
+
+.tab {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text-strong); }
+.tab.is-active { color: var(--text-strong); border-bottom-color: var(--accent); }
+
+/* File and commit lists. */
+.filelist, .commitlist { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+
+.filerow, .commitrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  width: 100%;
+  text-align: left;
+  border-left: 0; border-right: 0; border-top: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.filerow:last-child, .commitrow:last-child { border-bottom: 0; }
+.filerow:hover, .commitrow:hover { background: var(--surface-sunken); }
+
+.fileview {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+.fileview__body {
+  overflow-x: auto;
+  padding: var(--space-3);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}

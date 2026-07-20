@@ -1,7 +1,22 @@
 import { FileMode } from "./objects/types.js";
 import type { ObjectId, TreeEntry } from "./objects/types.js";
+import type { ObjectStore } from "./objects/store.js";
 import type { Repository } from "./repository.js";
+
 import type { IndexEntry } from "./staging.js";
+
+/**
+ * The only thing these helpers actually need.
+ *
+ * Reading history requires an object store and nothing else - no working
+ * directory, no index, no refs. Saying so in the type is what lets the server
+ * reuse this code against a database-backed store, instead of having to
+ * fabricate a Repository around a filesystem that does not exist there.
+ */
+export interface HasObjects {
+  readonly objects: ObjectStore;
+}
+
 
 /** A single file as recorded in a commit's tree. */
 export interface FlatEntry {
@@ -30,7 +45,7 @@ function emptyNode(): DirectoryNode {
  * the path to it, and one commit - not fifty thousand of anything.
  */
 export async function buildTreeFromIndex(
-  repository: Repository,
+  repository: HasObjects,
   entries: readonly IndexEntry[],
 ): Promise<ObjectId> {
   const root = emptyNode();
@@ -56,7 +71,7 @@ export async function buildTreeFromIndex(
   return writeNode(repository, root);
 }
 
-async function writeNode(repository: Repository, node: DirectoryNode): Promise<ObjectId> {
+async function writeNode(repository: HasObjects, node: DirectoryNode): Promise<ObjectId> {
   const entries: TreeEntry[] = [];
 
   for (const [name, file] of node.files) {
@@ -80,7 +95,7 @@ async function writeNode(repository: Repository, node: DirectoryNode): Promise<O
  * Returned in path order so two trees can be compared by a single merge walk.
  */
 export async function flattenTree(
-  repository: Repository,
+  repository: HasObjects,
   treeId: ObjectId,
   prefix = "",
 ): Promise<FlatEntry[]> {
@@ -102,7 +117,7 @@ export async function flattenTree(
 
 /** The files of a commit, keyed by path. */
 export async function readCommitFiles(
-  repository: Repository,
+  repository: HasObjects,
   commitId: ObjectId,
 ): Promise<Map<string, FlatEntry>> {
   const commit = await repository.objects.readCommit(commitId);
@@ -112,7 +127,7 @@ export async function readCommitFiles(
 
 /** The files of a commit, or an empty map for a repository with no commits. */
 export async function readCommitFilesOrEmpty(
-  repository: Repository,
+  repository: HasObjects,
   commitId: ObjectId | null,
 ): Promise<Map<string, FlatEntry>> {
   return commitId ? readCommitFiles(repository, commitId) : new Map();
@@ -120,7 +135,7 @@ export async function readCommitFilesOrEmpty(
 
 /** Look up a single path inside a tree without flattening the whole thing. */
 export async function findInTree(
-  repository: Repository,
+  repository: HasObjects,
   treeId: ObjectId,
   targetPath: string,
 ): Promise<TreeEntry | null> {

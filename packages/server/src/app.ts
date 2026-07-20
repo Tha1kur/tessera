@@ -12,6 +12,7 @@ import { generalLimiter } from "./http/middleware/rateLimit.js";
 import { checkDatabase } from "./lib/db.js";
 import { authRouter } from "./modules/auth/routes.js";
 import { issueRouter } from "./modules/issues/routes.js";
+import { gitRouter } from "./modules/repositories/git.routes.js";
 import { repositoryRouter } from "./modules/repositories/routes.js";
 import { userRouter } from "./modules/users/routes.js";
 
@@ -107,6 +108,14 @@ export function createApp(): Express {
           "DELETE /api/repositories/:username/:name": "delete it",
           "PUT    /api/repositories/:username/:name/star": "star it",
         },
+        git: {
+          "POST /api/repositories/:u/:n/git/push": "upload objects and move a branch",
+          "GET  /api/repositories/:u/:n/git/branches": "list branches",
+          "GET  /api/repositories/:u/:n/git/commits": "commit history",
+          "GET  /api/repositories/:u/:n/git/commits/:id": "one commit and its diff",
+          "GET  /api/repositories/:u/:n/git/tree": "files at a commit",
+          "GET  /api/repositories/:u/:n/git/blob/:id": "one file's contents",
+        },
         issues: {
           "GET   /api/repositories/:username/:name/issues": "list (?status=OPEN|CLOSED|ALL)",
           "POST  /api/repositories/:username/:name/issues": "open one",
@@ -135,6 +144,8 @@ export function createApp(): Express {
   // Nested so an issue is always addressed through the repository that owns it,
   // which is also what makes the access check impossible to skip.
   app.use("/api/repositories/:username/:name/issues", issueRouter);
+  // Version control history, served by the same engine the CLI uses.
+  app.use("/api/repositories/:username/:name/git", gitRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -1,7 +1,8 @@
-import { createHash, randomBytes } from "node:crypto";
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
+import { createHash } from "node:crypto";
 import { deflateSync, inflateSync } from "node:zlib";
+
+import { FilesystemBackend } from "./backend.js";
+import type { ObjectBackend } from "./backend.js";
 
 import {
   CorruptObjectError,
@@ -61,20 +62,28 @@ const MIN_ABBREVIATION = 4;
  *     exactly what `verify` checks.
  */
 export class ObjectStore {
-  constructor(private readonly root: string) {}
+  private readonly backend: ObjectBackend;
 
-  /** Absolute path at which a given id is (or would be) stored. */
+  /**
+   * Accepts either a directory path - the ordinary local case - or any backend
+   * implementing the same contract, which is how the server keeps objects in
+   * Postgres without a second copy of this logic.
+   */
+  constructor(backendOrRoot: ObjectBackend | string) {
+    this.backend =
+      typeof backendOrRoot === "string" ? new FilesystemBackend(backendOrRoot) : backendOrRoot;
+  }
+
+  /** Where a filesystem-backed store keeps a given id. Tests use this. */
   pathFor(id: ObjectId): string {
-    return path.join(this.root, id.slice(0, 2), id.slice(2));
+    if (!(this.backend instanceof FilesystemBackend)) {
+      throw new Error("pathFor is only meaningful for a filesystem-backed store");
+    }
+    return this.backend.pathFor(id);
   }
 
   async has(id: ObjectId): Promise<boolean> {
-    try {
-      await fs.access(this.pathFor(id));
-      return true;
-    } catch {
-      return false;
-    }
+    return this.backend.has(id);
   }
 
   /**
@@ -87,34 +96,53 @@ export class ObjectStore {
   async write(type: ObjectType, payload: Buffer): Promise<ObjectId> {
     const framed = frame(type, payload);
     const id = hash(framed);
-    const destination = this.pathFor(id);
 
     // Identical content is already stored under this exact name. Nothing to do.
     if (await this.has(id)) return id;
 
-    await fs.mkdir(path.dirname(destination), { recursive: true });
+    await this.backend.write(id, deflateSync(framed));
+    return id;
+  }
 
-    const temporary = `${destination}.${randomBytes(6).toString("hex")}.tmp`;
+  /**
+   * Store bytes that are already framed and compressed.
+   *
+   * Used when receiving a push: the sender has the framed bytes, and re-framing
+   * them would be wasted work. The id is still verified against the content, so
+   * a client cannot file an object under a name that does not match it.
+   */
+  async writeRaw(id: ObjectId, compressed: Buffer): Promise<void> {
+    if (await this.has(id)) return;
+
+    let framed: Buffer;
     try {
-      await fs.writeFile(temporary, deflateSync(framed), { flag: "wx" });
-      await fs.rename(temporary, destination);
-    } catch (error) {
-      await fs.rm(temporary, { force: true });
-      throw error;
+      framed = inflateSync(compressed);
+    } catch {
+      throw new CorruptObjectError(`object ${id} could not be decompressed`);
     }
 
-    return id;
+    if (hash(framed) !== id) {
+      throw new CorruptObjectError(`object does not hash to ${id} - refusing to store it`);
+    }
+
+    // Validates the header too, so a malformed object is rejected on arrival
+    // rather than discovered later by whoever tries to read it.
+    unframe(framed);
+
+    await this.backend.write(id, compressed);
+  }
+
+  /** The stored bytes exactly as held, for sending during a push. */
+  async readRaw(id: ObjectId): Promise<Buffer> {
+    const bytes = await this.backend.read(id);
+    if (!bytes) throw new ObjectNotFoundError(id);
+    return bytes;
   }
 
   /** Read an object back, verifying it hashes to the id it is filed under. */
   async read(id: ObjectId): Promise<{ type: ObjectType; payload: Buffer }> {
-    let compressed: Buffer;
-    try {
-      compressed = await fs.readFile(this.pathFor(id));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new ObjectNotFoundError(id);
-      throw error;
-    }
+    const compressed = await this.backend.read(id);
+    if (!compressed) throw new ObjectNotFoundError(id);
 
     let framed: Buffer;
     try {
@@ -164,24 +192,7 @@ export class ObjectStore {
 
   /** Every object id currently in the store. */
   async list(): Promise<ObjectId[]> {
-    let fanout: string[];
-    try {
-      fanout = await fs.readdir(this.root);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-      throw error;
-    }
-
-    const ids: ObjectId[] = [];
-    for (const prefix of fanout) {
-      if (prefix.length !== 2) continue;
-      const rest = await fs.readdir(path.join(this.root, prefix));
-      for (const suffix of rest) {
-        if (suffix.endsWith(".tmp")) continue;
-        ids.push(prefix + suffix);
-      }
-    }
-    return ids;
+    return this.backend.list();
   }
 
   /**

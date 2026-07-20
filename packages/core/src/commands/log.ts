@@ -1,6 +1,7 @@
 import type { Commit, ObjectId } from "./../objects/types.js";
 import { RefStore } from "./../refs.js";
 import type { Repository } from "./../repository.js";
+import type { HasObjects } from "./../trees.js";
 
 export interface LogOptions {
   /** Where to start walking. Defaults to HEAD. */
@@ -28,6 +29,21 @@ export async function* walkHistory(
   const refs = new RefStore(repository);
   const start = await refs.resolve(options.from ?? "HEAD");
 
+  yield* walkCommits(repository, start, options);
+}
+
+/**
+ * The same walk, starting from a commit id that is already resolved.
+ *
+ * Separated from `walkHistory` because resolving a revision needs refs, and
+ * refs live in a working directory. A server addressing commits by full id has
+ * no such directory and should not have to invent one to read history.
+ */
+export async function* walkCommits(
+  repository: HasObjects,
+  start: ObjectId,
+  options: { readonly limit?: number; readonly until?: ObjectId } = {},
+): AsyncGenerator<Commit> {
   const seen = new Set<ObjectId>([start]);
   const frontier: Commit[] = [{ id: start, ...(await repository.objects.readCommit(start)) }];
 
@@ -61,6 +77,17 @@ export async function log(repository: Repository, options: LogOptions = {}): Pro
   return commits;
 }
 
+/** Collected history from a resolved id, for callers without a working tree. */
+export async function logFrom(
+  repository: HasObjects,
+  start: ObjectId,
+  options: { readonly limit?: number } = {},
+): Promise<Commit[]> {
+  const commits: Commit[] = [];
+  for await (const entry of walkCommits(repository, start, options)) commits.push(entry);
+  return commits;
+}
+
 /**
  * The best common ancestor of two commits - the point where they diverged.
  *
@@ -69,7 +96,7 @@ export async function log(repository: Repository, options: LogOptions = {}): Pro
  * "one side changed it, take that change".
  */
 export async function mergeBase(
-  repository: Repository,
+  repository: HasObjects,
   left: ObjectId,
   right: ObjectId,
 ): Promise<ObjectId | null> {

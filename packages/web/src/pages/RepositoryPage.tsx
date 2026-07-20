@@ -7,6 +7,7 @@ import type { Issue, Pagination, Repository } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useAsync } from "../lib/useAsync";
 import { Alert, Avatar, Badge, Button, EmptyState, Field, Spinner, TextArea, TimeAgo } from "../components/ui";
+import { CommitsTab, FilesTab } from "./RepositoryGit";
 
 interface RepositoryResponse {
   repository: Repository;
@@ -19,6 +20,7 @@ interface IssueList {
 }
 
 type StatusFilter = "OPEN" | "CLOSED" | "ALL";
+type Tab = "files" | "commits" | "issues";
 
 export function RepositoryPage() {
   const { username = "", name = "" } = useParams();
@@ -27,6 +29,7 @@ export function RepositoryPage() {
 
   const [filter, setFilter] = useState<StatusFilter>("OPEN");
   const [composing, setComposing] = useState(false);
+  const [tab, setTab] = useState<Tab>("files");
 
   const repository = useAsync<RepositoryResponse>(
     (signal) =>
@@ -137,9 +140,23 @@ export function RepositoryPage() {
         </p>
       </header>
 
-      <hr className="divider" />
+      <nav className="tabs" aria-label="Repository sections">
+        {(["files", "commits", "issues"] as Tab[]).map((option) => (
+          <button
+            key={option}
+            className={`tab${tab === option ? " is-active" : ""}`}
+            onClick={() => setTab(option)}
+            aria-current={tab === option ? "page" : undefined}
+          >
+            {option === "files" ? "Files" : option === "commits" ? "History" : "Issues"}
+          </button>
+        ))}
+      </nav>
 
-      <section className="stack">
+      {tab === "files" && <FilesTab username={username} name={name} />}
+      {tab === "commits" && <CommitsTab username={username} name={name} />}
+
+      <section className="stack" hidden={tab !== "issues"}>
         <div className="row row--between row--wrap">
           <h2>Issues</h2>
 

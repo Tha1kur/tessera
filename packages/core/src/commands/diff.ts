@@ -8,6 +8,7 @@ import { RefStore } from "./../refs.js";
 import type { Repository } from "./../repository.js";
 import { Index } from "./../staging.js";
 import { readCommitFilesOrEmpty } from "./../trees.js";
+import type { HasObjects } from "./../trees.js";
 import { scanWorktree } from "./../worktree.js";
 
 export type FileChangeKind = "added" | "modified" | "deleted";
@@ -43,7 +44,7 @@ export interface DiffOptions {
  * expensive line-by-line work only ever runs on files that genuinely differ.
  */
 async function compare(
-  repository: Repository,
+  repository: HasObjects,
   before: ReadonlyMap<string, Side>,
   after: ReadonlyMap<string, Side>,
   options: DiffOptions = {},
@@ -99,7 +100,7 @@ async function compare(
   return diffs;
 }
 
-async function resolve(repository: Repository, side: Side): Promise<Buffer> {
+async function resolve(repository: HasObjects, side: Side): Promise<Buffer> {
   if (side.contents) return side.contents;
   if (side.id) return repository.objects.readBlob(side.id);
   /* c8 ignore next - a Side always carries one or the other. */
@@ -141,6 +142,32 @@ export async function diffStaged(repository: Repository, options: DiffOptions = 
   );
   const after = new Map<string, Side>(
     index.all().map((entry) => [entry.path, { mode: entry.mode, id: entry.id }]),
+  );
+
+  return compare(repository, before, after, options);
+}
+
+/**
+ * What changed between two commits, both already resolved to ids.
+ *
+ * The revision-syntax version below needs refs, and refs need a working
+ * directory. This one needs only the object store, which is what lets a server
+ * serve a diff without pretending to have a checkout.
+ */
+export async function diffCommitIds(
+  repository: HasObjects,
+  from: ObjectId | null,
+  to: ObjectId | null,
+  options: DiffOptions = {},
+): Promise<FileDiff[]> {
+  const beforeFiles = await readCommitFilesOrEmpty(repository, from);
+  const afterFiles = await readCommitFilesOrEmpty(repository, to);
+
+  const before = new Map<string, Side>(
+    [...beforeFiles.values()].map((file) => [file.path, { mode: file.mode, id: file.id }]),
+  );
+  const after = new Map<string, Side>(
+    [...afterFiles.values()].map((file) => [file.path, { mode: file.mode, id: file.id }]),
   );
 
   return compare(repository, before, after, options);

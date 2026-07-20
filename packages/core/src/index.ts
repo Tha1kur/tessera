@@ -36,6 +36,8 @@ export {
   frame,
   unframe,
 } from "./objects/codec.js";
+export { FilesystemBackend, MemoryBackend } from "./objects/backend.js";
+export type { ObjectBackend } from "./objects/backend.js";
 export { FileMode } from "./objects/types.js";
 export type { Commit, CommitObject, Identity, ObjectId, ObjectType, TreeEntry } from "./objects/types.js";
 
@@ -73,7 +75,7 @@ export {
   readCommitFiles,
   readCommitFilesOrEmpty,
 } from "./trees.js";
-export type { FlatEntry } from "./trees.js";
+export type { FlatEntry, HasObjects } from "./trees.js";
 
 /* Working tree and ignore rules. */
 export { IgnoreList } from "./ignore.js";
@@ -114,7 +116,7 @@ export {
 } from "./commands/commit.js";
 export type { CommitOptions } from "./commands/commit.js";
 
-export { log, mergeBase, walkHistory } from "./commands/log.js";
+export { log, logFrom, mergeBase, walkCommits, walkHistory } from "./commands/log.js";
 export type { LogOptions } from "./commands/log.js";
 
 export { createBranch, deleteBranch, listBranches, moveBranch } from "./commands/branch.js";
@@ -123,7 +125,7 @@ export type { BranchSummary } from "./commands/branch.js";
 export { UncommittedChangesError, checkout, restore } from "./commands/checkout.js";
 export type { CheckoutOptions, CheckoutResult } from "./commands/checkout.js";
 
-export { diffCommit, diffCommits, diffStaged, diffUnstaged, summarise } from "./commands/diff.js";
+export { diffCommit, diffCommitIds, diffCommits, diffStaged, diffUnstaged, summarise } from "./commands/diff.js";
 export type { DiffOptions, FileChangeKind, FileDiff } from "./commands/diff.js";
 
 /* Merging. */
