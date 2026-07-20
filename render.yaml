@@ -19,8 +19,12 @@ services:
     plan: free
     region: oregon
 
+    # --include=dev is required, not optional. Render sets NODE_ENV=production
+    # for the build, and npm then omits devDependencies - which is where
+    # typescript and @types/node live. Without this the compiler either is not
+    # installed or cannot find its own type definitions.
     buildCommand: >-
-      npm ci &&
+      npm ci --include=dev &&
       npm run db:generate -w @tessera/server &&
       npm run build -w @tessera/core &&
       npm run build -w @tessera/server
@@ -61,8 +65,10 @@ services:
     # No `plan` here on purpose: Render's static sites are always free and the
     # schema rejects the key outright. Only the Node service above takes one.
 
+    # Same reason as the API: the build needs devDependencies even though the
+    # published output does not.
     buildCommand: >-
-      npm ci &&
+      npm ci --include=dev &&
       npm run build -w @tessera/core &&
       npm run build -w @tessera/web
 
