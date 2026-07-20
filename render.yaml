@@ -58,7 +58,8 @@ services:
   - type: web
     name: tessera-web
     runtime: static
-    plan: free
+    # No `plan` here on purpose: Render's static sites are always free and the
+    # schema rejects the key outright. Only the Node service above takes one.
 
     buildCommand: >-
       npm ci &&
