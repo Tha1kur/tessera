@@ -81,6 +81,18 @@ export const changePasswordSchema = z.object({
   newPassword: password,
 });
 
+export const deleteAccountSchema = z.object({
+  // Deleting an account is irreversible, so it is gated on the password rather
+  // than on the access token alone - a borrowed laptop or a stolen token
+  // should not be enough to destroy someone's work.
+  password: z.string().min(1, "is required").max(MAX_PASSWORD_LENGTH),
+  /// Typing the username is the second confirmation. It makes the action
+  /// deliberate rather than a mis-click on a button.
+  confirmUsername: z.string().min(1, "is required"),
+});
+
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

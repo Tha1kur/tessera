@@ -91,6 +91,7 @@ export function createApp(): Express {
           "POST /api/auth/logout": "end the current session",
           "GET  /api/auth/me": "the signed-in account",
           "GET  /api/auth/sessions": "list your active sessions",
+          "DELETE /api/auth/me": "delete your account and everything in it",
         },
         users: {
           "GET   /api/users/:username": "a profile",

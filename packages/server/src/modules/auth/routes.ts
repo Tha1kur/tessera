@@ -7,10 +7,10 @@ import { asyncHandler } from "../../http/middleware/error.js";
 import { authLimiter } from "../../http/middleware/rateLimit.js";
 import { validate } from "../../http/validate.js";
 import { prisma } from "../../lib/db.js";
-import { conflict, unauthenticated } from "../../lib/errors.js";
+import { badRequest, conflict, unauthenticated } from "../../lib/errors.js";
 import { fakeVerify, hashPassword, verifyPassword } from "../../lib/password.js";
 import { publicUser } from "../users/serialise.js";
-import { changePasswordSchema, loginSchema, signupSchema } from "./schemas.js";
+import { changePasswordSchema, deleteAccountSchema, loginSchema, signupSchema } from "./schemas.js";
 import type { IssuedTokens, SessionContext } from "./sessions.js";
 import {
   createSession,
@@ -250,5 +250,40 @@ authRouter.delete(
 
     clearRefreshCookie(response);
     response.json({ message: `signed out of ${revoked} session(s)` });
+  }),
+);
+
+/* -------------------------------------------------------------------------- */
+/* DELETE /api/auth/me                                                        */
+/* -------------------------------------------------------------------------- */
+
+authRouter.delete(
+  "/me",
+  requireAuth,
+  authLimiter,
+  validate({ body: deleteAccountSchema }),
+  asyncHandler(async (request, response) => {
+    const { id } = currentUser(request);
+    const { password, confirmUsername } = request.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw unauthenticated("this account no longer exists", "SESSION_REVOKED");
+
+    // Two independent confirmations, because there is no undo. Either one alone
+    // is too easy to satisfy by accident or with a borrowed session.
+    if (!(await verifyPassword(user.passwordHash, password))) {
+      throw unauthenticated("password is incorrect", "INVALID_CREDENTIALS");
+    }
+    if (confirmUsername !== user.username) {
+      throw badRequest(`type "${user.username}" to confirm`);
+    }
+
+    // Repositories, issues, stars, follows and sessions all carry
+    // onDelete: Cascade, so the database removes them in one statement rather
+    // than leaving orphaned rows behind if application-level cleanup is missed.
+    await prisma.user.delete({ where: { id } });
+
+    clearRefreshCookie(response);
+    response.status(204).end();
   }),
 );

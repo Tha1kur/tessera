@@ -188,6 +188,21 @@ describe.runIf(process.env.SKIP_DB !== "1")("refresh token rotation", () => {
     await expect(rotateSession(prisma, two.refreshToken)).rejects.toThrow(AppError);
   });
 
+  it("takes every session with it when the account is deleted", async () => {
+    if (!reachable) return;
+    // Sessions carry onDelete: Cascade. Without it, deleting a user would
+    // leave live refresh tokens pointing at an account that no longer exists.
+    const user = await makeUser("d");
+    const tokens = await createSession(prisma, user.id);
+
+    expect(await prisma.session.count({ where: { userId: user.id } })).toBe(1);
+
+    await prisma.user.delete({ where: { id: user.id } });
+
+    expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
+    await expect(rotateSession(prisma, tokens.refreshToken)).rejects.toThrow(AppError);
+  });
+
   it("keeps one user's sessions out of another's revocation", async () => {
     if (!reachable) return;
     const [alice, bob] = await Promise.all([makeUser("a"), makeUser("b")]);
