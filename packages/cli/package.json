@@ -1,0 +1,25 @@
+{
+  "name": "@tessera/cli",
+  "version": "0.1.0",
+  "description": "The `tess` command line interface for Tessera.",
+  "type": "module",
+  "bin": {
+    "tess": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node --experimental-strip-types src/main.ts"
+  },
+  "dependencies": {
+    "@tessera/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "license": "MIT"
+}

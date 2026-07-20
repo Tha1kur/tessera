@@ -1,0 +1,74 @@
+# The whole stack: database, API, web client.
+#
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# For local development you usually only want the database:
+#
+#   docker compose up -d postgres
+#
+# Then run the API and the client on the host with `npm run dev:api` and
+# `npm run dev:web`, which gives you hot reload.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tessera-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tessera
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tessera}
+      POSTGRES_DB: tessera
+    ports:
+      - "5432:5432"
+    volumes:
+      - tessera-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Waiting for the container to *start* is not the same as waiting for
+      # Postgres to accept connections. This is what `service_healthy` below
+      # actually waits on, and skipping it is the usual cause of a first-run
+      # "connection refused".
+      test: ["CMD-SHELL", "pg_isready -U tessera -d tessera"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    container_name: tessera-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://tessera:${POSTGRES_PASSWORD:-tessera}@postgres:5432/tessera?schema=public
+      # No defaults for these on purpose. A missing secret must stop the stack,
+      # not silently fall back to something an attacker could guess.
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:?generate one with openssl rand -base64 48}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:?generate a DIFFERENT one with openssl rand -base64 48}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+    expose:
+      - "4000"
+    # Migrations run at start-up so a deploy cannot land application code that
+    # expects a schema the database does not have yet.
+    command: >-
+      sh -c "npx prisma migrate deploy --schema packages/server/prisma/schema.prisma
+             && node packages/server/dist/main.js"
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    container_name: tessera-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  tessera-pgdata:

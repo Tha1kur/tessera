@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": false,
+    "sourceMap": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  // The CLI consumes @tessera/core through its published type declarations,
+  // exactly as an outside user would. Building against core's source instead
+  // would hide any mistake in what the package actually exports.
+  "references": [{ "path": "../core" }],
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

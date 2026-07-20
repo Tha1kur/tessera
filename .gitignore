@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# Compiled output must never sit next to sources: a stray .js beside a .ts
+# silently shadows it during tests. See packages/core "clean" script.
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.map
+
+# Environment
+.env
+.env.local
+data/

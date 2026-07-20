@@ -1,0 +1,91 @@
+/* App shell. */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-md);
+}
+/* Only revealed once focused, which is the entire point of a skip link. */
+.skip-link:focus { left: var(--space-4); }
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--header-height);
+  background: color-mix(in srgb, var(--surface-base) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header__inner {
+  max-width: var(--content-width);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent);
+  font-weight: 650;
+  font-size: var(--text-base);
+  letter-spacing: -0.02em;
+}
+.brand:hover { text-decoration: none; }
+.brand span { color: var(--text-strong); }
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.header__link {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.header__link:hover {
+  color: var(--text-strong);
+  background: var(--surface-sunken);
+  text-decoration: none;
+}
+.header__link.is-active { color: var(--text-strong); background: var(--surface-sunken); }
+
+.header__actions { gap: var(--space-2); }
+.header__me { display: inline-flex; }
+.header__me:hover { opacity: 0.85; }
+
+.footer {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-8);
+  padding: var(--space-5) 0;
+}
+.footer__inner {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  text-align: center;
+}
+
+/* Below 640px the nav links are dropped rather than wrapped - the brand and
+   the primary actions are what matter on a phone. */
+@media (max-width: 640px) {
+  .header__nav { display: none; }
+  .header__inner { gap: var(--space-3); }
+  .header__actions { margin-left: auto; }
+}

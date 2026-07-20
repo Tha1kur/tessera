@@ -1,0 +1,160 @@
+// Tessera's relational schema.
+//
+// The data here is relational in the plainest sense - a user owns repositories,
+// a repository has issues, a star joins a user to a repository - so it is
+// modelled with real foreign keys and real constraints rather than with
+// documents holding arrays of ids that nothing enforces.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String  @id @default(cuid())
+  username     String  @unique
+  email        String  @unique
+  passwordHash String
+  displayName  String?
+  bio          String? @db.VarChar(500)
+  avatarUrl    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repositories Repository[]
+  issues       Issue[]
+  stars        Star[]
+  sessions     Session[]
+
+  following Follow[] @relation("Follower")
+  followers Follow[] @relation("Following")
+
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// Refresh token sessions.
+///
+/// Only a hash of each refresh token is stored, for the same reason passwords
+/// are hashed: a leaked database should not hand out working credentials.
+///
+/// `familyId` groups every token descended from one login. Rotation issues a
+/// new token and marks the old one replaced; if a token that was already used
+/// is presented again, that means a copy leaked, and the entire family is
+/// revoked. Detecting theft is the whole point of rotating in the first place.
+model Session {
+  id        String  @id @default(cuid())
+  userId    String
+  tokenHash String  @unique
+  familyId  String
+
+  userAgent String?
+  ipAddress String?
+
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Repository {
+  id          String     @id @default(cuid())
+  name        String
+  description String?    @db.VarChar(500)
+  visibility  Visibility @default(PUBLIC)
+
+  ownerId String
+
+  /// Highest issue number handed out so far, so issues can be numbered #1, #2
+  /// per repository. Kept here and incremented inside a transaction, because
+  /// counting existing issues would race under concurrent creates.
+  issueCounter Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner  User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  issues Issue[]
+  stars  Star[]
+
+  /// Repository names are unique *per owner*, not globally. Making the name
+  /// globally unique - as the original project did - means the first person to
+  /// create "portfolio" prevents everyone else from ever doing so.
+  @@unique([ownerId, name])
+  @@index([visibility, createdAt])
+  @@map("repositories")
+}
+
+enum IssueStatus {
+  OPEN
+  CLOSED
+}
+
+model Issue {
+  id     String      @id @default(cuid())
+  /// Per-repository issue number, the #1 / #2 users actually refer to.
+  number Int
+  title  String      @db.VarChar(200)
+  body   String?     @db.Text
+  status IssueStatus @default(OPEN)
+
+  repositoryId String
+  authorId     String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, number])
+  @@index([repositoryId, status])
+  @@map("issues")
+}
+
+model Star {
+  userId       String
+  repositoryId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  /// The composite key is the constraint: a user cannot star a repository
+  /// twice, enforced by the database rather than by hopeful application code.
+  @@id([userId, repositoryId])
+  @@index([repositoryId])
+  @@map("stars")
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
+}

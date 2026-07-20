@@ -1,0 +1,23 @@
+{
+  "name": "tessera",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tessera - a content-addressed version control system, built from first principles.",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @tessera/core && npm run build -w @tessera/cli && npm run build -w @tessera/server && npm run build -w @tessera/web",
+    "test": "npm run test -w @tessera/core && npm run test -w @tessera/server",
+    "typecheck": "npm run typecheck -w @tessera/core && npm run typecheck -w @tessera/cli && npm run typecheck -w @tessera/server",
+    "dev:api": "npm run dev -w @tessera/server",
+    "db:up": "docker compose up -d",
+    "db:migrate": "npm run db:migrate -w @tessera/server",
+    "dev:web": "npm run dev -w @tessera/web"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
