@@ -1,5 +1,9 @@
 # Tessera
 
+![CI](https://github.com/YOUR-USERNAME/tessera/actions/workflows/ci.yml/badge.svg)
+![Tests](https://img.shields.io/badge/tests-139%20passing-3f6b47)
+![License](https://img.shields.io/badge/license-MIT-b4532a)
+
 A version control system built from first principles — content-addressed storage, real commit graphs, and Myers diffing. No wrapper around Git; the internals are implemented here.
 
 ```
@@ -291,6 +295,54 @@ tess config user.name <value>     Set commit identity
 ```
 
 Revision syntax: `HEAD`, `<branch>`, `<id prefix>` (≥4 chars), with `~n` and `^` walking to ancestors.
+
+## Running the whole stack
+
+```bash
+export ACCESS_TOKEN_SECRET=$(openssl rand -base64 48)
+export REFRESH_TOKEN_SECRET=$(openssl rand -base64 48)
+
+docker compose up -d --build
+open http://localhost:8080
+```
+
+Three containers: Postgres, the API, and nginx serving the built client. nginx proxies `/api` to the API so the refresh cookie stays same-site in production exactly as the Vite proxy does in development — `SameSite=strict` would silently drop it across origins.
+
+Both images are multi-stage. The build stage has the compilers, dev dependencies and source; the runtime stage has none of them. The API image runs as a non-root user and declares a healthcheck against `/api/health`, so an orchestrator restarts it when it cannot reach the database rather than routing traffic into a black hole.
+
+The compose file deliberately provides **no default** for either token secret. A missing secret stops the stack instead of falling back to something guessable.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs four jobs on every push and pull request:
+
+| Job | What it covers |
+|---|---|
+| **engine** | The 99 engine tests across a matrix — Linux, macOS and Windows, on Node 20 and 22. The engine touches path separators, file modes and atomic rename semantics constantly, and those are exactly the things that differ per platform. |
+| **server** | Typecheck plus all 40 server tests against a real Postgres service container, including the transaction-rollback behaviour a mocked client cannot reproduce. |
+| **web** | Typecheck and production build. |
+| **audit** | Fails on any known high or critical advisory. |
+
+## Deploying it
+
+The API is a standard container listening on `$PORT` and needing `DATABASE_URL` plus two token secrets, so it runs anywhere that accepts a Dockerfile — Fly.io, Render, Railway, Cloud Run.
+
+Set in production:
+
+```
+NODE_ENV=production
+DATABASE_URL=<managed Postgres connection string>
+ACCESS_TOKEN_SECRET=<openssl rand -base64 48>
+REFRESH_TOKEN_SECRET=<a different one>
+CORS_ORIGINS=https://your-domain
+```
+
+Two production details that are easy to get wrong:
+
+- **Serve the client and the API from one origin.** The refresh cookie is `SameSite=strict`; split across two domains it is never sent, and users appear to be logged out on every reload.
+- **`secure: true` on cookies requires HTTPS.** It is already conditional on `NODE_ENV=production`, so a plain-HTTP production deploy will silently drop the cookie.
+
+`prisma migrate deploy` runs at container start-up, so application code can never land against a schema that has not been migrated yet.
 
 ## Development
 
