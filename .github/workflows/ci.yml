@@ -89,6 +89,13 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate -w @tessera/server
 
+      # The server consumes @tessera/core through its published declarations,
+      # so core must be compiled before anything typechecks against it. A local
+      # checkout usually has a stale dist lying around and hides this; a clean
+      # CI checkout does not.
+      - name: Build the engine
+        run: npm run build -w @tessera/core
+
       - name: Apply migrations
         run: npx prisma migrate deploy --schema packages/server/prisma/schema.prisma
 
