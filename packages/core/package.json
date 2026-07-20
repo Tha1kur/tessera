@@ -19,7 +19,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "find src \\( -name '*.js' -o -name '*.d.ts' -o -name '*.map' \\) -delete; rm -rf dist *.tsbuildinfo",
+    "clean": "node scripts/clean.mjs",
     "pretest": "npm run clean"
   },
   "devDependencies": {
