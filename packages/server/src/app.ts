@@ -81,7 +81,7 @@ export function createApp(): Express {
     response.json({
       name: "Tessera API",
       version: "0.1.0",
-      documentation: "https://github.com/adityayadav/tessera#the-api",
+      documentation: "https://github.com/Tha1kur/tessera#the-api",
       health: "/api/health",
       endpoints: {
         auth: {

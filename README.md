@@ -1,6 +1,6 @@
 # Tessera
 
-![CI](https://github.com/YOUR-USERNAME/tessera/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Tha1kur/tessera/actions/workflows/ci.yml/badge.svg)
 ![Tests](https://img.shields.io/badge/tests-139%20passing-3f6b47)
 ![License](https://img.shields.io/badge/license-MIT-b4532a)
 
