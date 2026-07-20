@@ -55,6 +55,10 @@ services:
 
       # Set this to the web service's real URL after the first deploy. The
       # server refuses a wildcard origin in production on purpose.
+      # Must match the web service's real origin. Render appends a random
+      # suffix when a name is taken, so this cannot be predicted before the
+      # first deploy - which is why it is filled in by hand rather than
+      # defaulted to something permissive.
       - key: CORS_ORIGINS
         sync: false
 
@@ -82,7 +86,7 @@ services:
         # Proxying the API through the same hostname is what keeps the refresh
         # cookie same-site. Split across two domains, SameSite=strict means the
         # browser never sends it and everyone appears logged out on reload.
-        destination: https://tessera-api.onrender.com/api/*
+        destination: https://tessera-api-ghcl.onrender.com/api/*
       - type: rewrite
         source: /*
         destination: /index.html
